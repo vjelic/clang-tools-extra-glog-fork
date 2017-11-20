@@ -2,12 +2,9 @@
 # so that formatting happens correctly.
 ---
 MainSourceFile:  yes.cpp
-Diagnostics:
+Diagnostics:     
   - DiagnosticName:  test-yes
-    Message: Fix
-    FilePath: $(path)/yes.cpp
-    FileOffset: 494
-    Replacements:
+    Replacements:    
       - FilePath:        $(path)/yes.cpp
         Offset:          494
         Length:          1

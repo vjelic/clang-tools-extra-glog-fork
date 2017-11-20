@@ -1,12 +1,10 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-add_clang_tool(clangd
+add_clang_executable(clangd
   ClangdMain.cpp
   )
 
-set(LLVM_LINK_COMPONENTS
-  support
-  )
+install(TARGETS clangd RUNTIME DESTINATION bin)
 
 target_link_libraries(clangd
   clangBasic
@@ -16,4 +14,5 @@ target_link_libraries(clangd
   clangSema
   clangTooling
   clangToolingCore
+  LLVMSupport
   )

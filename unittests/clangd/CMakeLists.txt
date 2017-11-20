@@ -10,8 +10,6 @@ include_directories(
 
 add_extra_unittest(ClangdTests
   ClangdTests.cpp
-  JSONExprTests.cpp
-  TraceTests.cpp
   )
 
 target_link_libraries(ClangdTests

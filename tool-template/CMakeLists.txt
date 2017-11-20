@@ -12,5 +12,4 @@ target_link_libraries(tool-template
   clangBasic
   clangFrontend
   clangTooling
-  clangToolingRefactor
   )
