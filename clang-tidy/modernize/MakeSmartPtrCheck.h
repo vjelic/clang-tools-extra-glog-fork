@@ -11,7 +11,6 @@
 #define LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_MODERNIZE_MAKE_SMART_PTR_H
 
 #include "../ClangTidy.h"
-#include "../utils/IncludeInserter.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchersInternal.h"
 #include "llvm/ADT/StringRef.h"
@@ -25,11 +24,9 @@ namespace modernize {
 class MakeSmartPtrCheck : public ClangTidyCheck {
 public:
   MakeSmartPtrCheck(StringRef Name, ClangTidyContext *Context,
-                    StringRef MakeSmartPtrFunctionName);
+                    std::string makeSmartPtrFunctionName);
   void registerMatchers(ast_matchers::MatchFinder *Finder) final;
-  void registerPPCallbacks(clang::CompilerInstance &Compiler) override;
   void check(const ast_matchers::MatchFinder::MatchResult &Result) final;
-  void storeOptions(ClangTidyOptions::OptionMap &Opts) override;
 
 protected:
   using SmartPtrTypeMatcher = ast_matchers::internal::BindableMatcher<QualType>;
@@ -46,21 +43,14 @@ protected:
   static const char NewExpression[];
 
 private:
-  std::unique_ptr<utils::IncludeInserter> Inserter;
-  const utils::IncludeSorter::IncludeStyle IncludeStyle;
-  const std::string MakeSmartPtrFunctionHeader;
-  const std::string MakeSmartPtrFunctionName;
-  const bool IgnoreMacros;
+  std::string makeSmartPtrFunctionName;
 
   void checkConstruct(SourceManager &SM, const CXXConstructExpr *Construct,
                       const QualType *Type, const CXXNewExpr *New);
   void checkReset(SourceManager &SM, const CXXMemberCallExpr *Member,
                   const CXXNewExpr *New);
-
-  /// Returns true when the fixes for replacing CXXNewExpr are generated.
-  bool replaceNew(DiagnosticBuilder &Diag, const CXXNewExpr *New,
+  void replaceNew(DiagnosticBuilder &Diag, const CXXNewExpr *New,
                   SourceManager &SM);
-  void insertHeader(DiagnosticBuilder &Diag, FileID FD);
 };
 
 } // namespace modernize

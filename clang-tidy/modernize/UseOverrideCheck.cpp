@@ -38,16 +38,11 @@ ParseTokens(CharSourceRange Range, const MatchFinder::MatchResult &Result) {
                  File.end());
   SmallVector<Token, 16> Tokens;
   Token Tok;
-  int NestedParens = 0;
   while (!RawLexer.LexFromRawLexer(Tok)) {
-    if ((Tok.is(tok::semi) || Tok.is(tok::l_brace)) && NestedParens == 0)
+    if (Tok.is(tok::semi) || Tok.is(tok::l_brace))
       break;
     if (Sources.isBeforeInTranslationUnit(Range.getEnd(), Tok.getLocation()))
       break;
-    if (Tok.is(tok::l_paren))
-      ++NestedParens;
-    else if (Tok.is(tok::r_paren))
-      --NestedParens;
     if (Tok.is(tok::raw_identifier)) {
       IdentifierInfo &Info = Result.Context->Idents.get(StringRef(
           Sources.getCharacterData(Tok.getLocation()), Tok.getLength()));

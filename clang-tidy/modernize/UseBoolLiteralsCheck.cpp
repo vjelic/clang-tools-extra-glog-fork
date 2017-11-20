@@ -18,11 +18,6 @@ namespace clang {
 namespace tidy {
 namespace modernize {
 
-UseBoolLiteralsCheck::UseBoolLiteralsCheck(StringRef Name,
-                                           ClangTidyContext *Context)
-    : ClangTidyCheck(Name, Context),
-      IgnoreMacros(Options.getLocalOrGlobal("IgnoreMacros", true)) {}
-
 void UseBoolLiteralsCheck::registerMatchers(MatchFinder *Finder) {
   if (!getLangOpts().CPlusPlus)
     return;
@@ -57,16 +52,11 @@ void UseBoolLiteralsCheck::check(const MatchFinder::MatchResult &Result) {
 
   const Expr *Expression = Cast ? Cast : Literal;
 
-  bool InMacro = Expression->getLocStart().isMacroID();
-
-  if (InMacro && IgnoreMacros)
-    return;
-
   auto Diag =
       diag(Expression->getExprLoc(),
            "converting integer literal to bool, use bool literal instead");
 
-  if (!InMacro)
+  if (!Expression->getLocStart().isMacroID())
     Diag << FixItHint::CreateReplacement(
         Expression->getSourceRange(), LiteralBooleanValue ? "true" : "false");
 }
