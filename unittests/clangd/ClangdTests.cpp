@@ -212,21 +212,17 @@ public:
       ExtraClangFlags.push_back("-ffreestanding");
   }
 
-  std::vector<tooling::CompileCommand>
-  getCompileCommands(PathRef File) override {
+  llvm::Optional<tooling::CompileCommand>
+  getCompileCommand(PathRef File) const override {
     if (ExtraClangFlags.empty())
-      return {};
+      return llvm::None;
 
-    std::vector<std::string> CommandLine;
-    CommandLine.reserve(3 + ExtraClangFlags.size());
-    CommandLine.insert(CommandLine.end(), {"clang", "-fsyntax-only"});
-    CommandLine.insert(CommandLine.end(), ExtraClangFlags.begin(),
-                       ExtraClangFlags.end());
-    CommandLine.push_back(File.str());
-
+    auto CommandLine = ExtraClangFlags;
+    CommandLine.insert(CommandLine.begin(), "clang");
+    CommandLine.insert(CommandLine.end(), File.str());
     return {tooling::CompileCommand(llvm::sys::path::parent_path(File),
                                     llvm::sys::path::filename(File),
-                                    CommandLine, "")};
+                                    std::move(CommandLine), "")};
   }
 
   std::vector<std::string> ExtraClangFlags;
@@ -740,6 +736,61 @@ int main() { ClassWithMembers().{complete} }
   EXPECT_TRUE(ContainsItem(Results, "AAA"));
   EXPECT_TRUE(ContainsItem(Results, "BBB"));
   EXPECT_FALSE(ContainsItem(Results, "CCC"));
+}
+
+TEST_F(ClangdCompletionTest, Filter) {
+  MockFSProvider FS;
+  MockCompilationDatabase CDB(/*AddFreestandingFlag=*/true);
+  CDB.ExtraClangFlags.push_back("-xc++");
+  ErrorCheckingDiagConsumer DiagConsumer;
+  clangd::CodeCompleteOptions Opts;
+  ClangdServer Server(CDB, DiagConsumer, FS, getDefaultAsyncThreadsCount(),
+                      /*StorePreamblesInMemory=*/true, Opts,
+                      EmptyLogger::getInstance());
+
+  auto FooCpp = getVirtualTestFilePath("foo.cpp");
+  FS.Files[FooCpp] = "";
+  FS.ExpectedFile = FooCpp;
+  const char *Body = R"cpp(
+    int Abracadabra;
+    int Alakazam;
+    struct S {
+      int FooBar;
+      int FooBaz;
+      int Qux;
+    };
+  )cpp";
+  auto Complete = [&](StringRef Query) {
+    StringWithPos Completion = parseTextMarker(
+        formatv("{0} int main() { {1}{{complete}} }", Body, Query).str(),
+        "complete");
+    Server.addDocument(FooCpp, Completion.Text);
+    return Server
+        .codeComplete(FooCpp, Completion.MarkerPos, StringRef(Completion.Text))
+        .get()
+        .Value;
+  };
+
+  auto Foba = Complete("S().Foba");
+  EXPECT_TRUE(ContainsItem(Foba, "FooBar"));
+  EXPECT_TRUE(ContainsItem(Foba, "FooBaz"));
+  EXPECT_FALSE(ContainsItem(Foba, "Qux"));
+
+  auto FR = Complete("S().FR");
+  EXPECT_TRUE(ContainsItem(FR, "FooBar"));
+  EXPECT_FALSE(ContainsItem(FR, "FooBaz"));
+  EXPECT_FALSE(ContainsItem(FR, "Qux"));
+
+  auto Op = Complete("S().opr");
+  EXPECT_TRUE(ContainsItem(Op, "operator="));
+
+  auto Aaa = Complete("aaa");
+  EXPECT_TRUE(ContainsItem(Aaa, "Abracadabra"));
+  EXPECT_TRUE(ContainsItem(Aaa, "Alakazam"));
+
+  auto UA = Complete("_a");
+  EXPECT_TRUE(ContainsItem(UA, "static_cast"));
+  EXPECT_FALSE(ContainsItem(UA, "Abracadabra"));
 }
 
 TEST_F(ClangdCompletionTest, CompletionOptions) {
