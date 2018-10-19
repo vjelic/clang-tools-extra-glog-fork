@@ -23,7 +23,6 @@ constexpr uint32_t SymbolLocation::Position::MaxLine;
 constexpr uint32_t SymbolLocation::Position::MaxColumn;
 void SymbolLocation::Position::setLine(uint32_t L) {
   if (L > MaxLine) {
-    log("Set an overflowed Line {0}", L);
     Line = MaxLine;
     return;
   }
@@ -31,7 +30,6 @@ void SymbolLocation::Position::setLine(uint32_t L) {
 }
 void SymbolLocation::Position::setColumn(uint32_t Col) {
   if (Col > MaxColumn) {
-    log("Set an overflowed Column {0}", Col);
     Column = MaxColumn;
     return;
   }
@@ -172,17 +170,19 @@ RefSlab RefSlab::Builder::build() && {
   // Reallocate refs on the arena to reduce waste and indirections when reading.
   std::vector<std::pair<SymbolID, ArrayRef<Ref>>> Result;
   Result.reserve(Refs.size());
+  size_t NumRefs = 0;
   for (auto &Sym : Refs) {
     auto &SymRefs = Sym.second;
     llvm::sort(SymRefs);
     // FIXME: do we really need to dedup?
     SymRefs.erase(std::unique(SymRefs.begin(), SymRefs.end()), SymRefs.end());
 
+    NumRefs += SymRefs.size();
     auto *Array = Arena.Allocate<Ref>(SymRefs.size());
     std::uninitialized_copy(SymRefs.begin(), SymRefs.end(), Array);
     Result.emplace_back(Sym.first, ArrayRef<Ref>(Array, SymRefs.size()));
   }
-  return RefSlab(std::move(Result), std::move(Arena));
+  return RefSlab(std::move(Result), std::move(Arena), NumRefs);
 }
 
 void SwapIndex::reset(std::unique_ptr<SymbolIndex> Index) {

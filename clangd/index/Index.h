@@ -37,10 +37,15 @@ struct SymbolLocation {
   // Position is encoded into 32 bits to save space.
   // If Line/Column overflow, the value will be their maximum value.
   struct Position {
+    Position() : Line(0), Column(0) {}
     void setLine(uint32_t Line);
     uint32_t line() const { return Line; }
     void setColumn(uint32_t Column);
     uint32_t column() const { return Column; }
+
+    bool hasOverflow() const {
+      return Line >= MaxLine || Column >= MaxColumn;
+    }
 
     static constexpr uint32_t MaxLine = (1 << 20) - 1;
     static constexpr uint32_t MaxColumn = (1 << 12) - 1;
@@ -407,7 +412,9 @@ public:
 
   const_iterator begin() const { return Refs.begin(); }
   const_iterator end() const { return Refs.end(); }
+  /// Gets the number of symbols.
   size_t size() const { return Refs.size(); }
+  size_t numRefs() const { return NumRefs; }
   bool empty() const { return Refs.empty(); }
 
   size_t bytes() const {
@@ -431,11 +438,14 @@ public:
   };
 
 private:
-  RefSlab(std::vector<value_type> Refs, llvm::BumpPtrAllocator Arena)
-      : Arena(std::move(Arena)), Refs(std::move(Refs)) {}
+  RefSlab(std::vector<value_type> Refs, llvm::BumpPtrAllocator Arena,
+          size_t NumRefs)
+      : Arena(std::move(Arena)), Refs(std::move(Refs)), NumRefs(NumRefs) {}
 
   llvm::BumpPtrAllocator Arena;
   std::vector<value_type> Refs;
+  // Number of all references.
+  size_t NumRefs = 0;
 };
 
 struct FuzzyFindRequest {
